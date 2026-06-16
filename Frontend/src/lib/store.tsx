@@ -17,6 +17,7 @@ import {
   scheduleApi,
 } from "./api";
 import { useAuth } from "./auth";
+import { useWebSocket, type WsMessage } from "./useWebSocket";
 
 interface StoreContextValue {
   rooms: Room[];
@@ -118,6 +119,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
     });
   }, [user, refresh]);
+
+  // ========== WebSocket: real-time status updates ==========
+  const handleWsMessage = useCallback((msg: WsMessage) => {
+    if (msg.type === "command") {
+      const newStatus = msg.status === "true";
+      setDevices((prev) =>
+        prev.map((d) =>
+          d.slot === msg.slot ? { ...d, status: newStatus } : d,
+        ),
+      );
+    } else if (msg.type === "sync") {
+      setDevices((prev) =>
+        prev.map((d) => {
+          const synced = msg.devices.find((s) => s.slot === d.slot);
+          if (synced) {
+            return { ...d, status: synced.status === "true" };
+          }
+          return d;
+        }),
+      );
+    }
+  }, []);
+
+  useWebSocket({ userId: user?.id, onMessage: handleWsMessage });
 
   const toggleDevice = useCallback(
     async (id: number, status?: boolean) => {
