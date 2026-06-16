@@ -3,36 +3,32 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
     async up(queryInterface, Sequelize) {
-        await queryInterface.createTable("users", {
+        await queryInterface.createTable("rooms", {
             id: {
                 allowNull: false,
                 autoIncrement: true,
                 primaryKey: true,
                 type: Sequelize.INTEGER,
             },
+            user_id: {
+                type: Sequelize.INTEGER,
+                allowNull: false,
+                references: {
+                    model: "users",
+                    key: "id",
+                },
+                onUpdate: "CASCADE",
+                onDelete: "CASCADE",
+            },
             name: {
                 type: Sequelize.STRING,
                 allowNull: false,
             },
-            email: {
+            icon: {
                 type: Sequelize.STRING,
                 allowNull: false,
-                unique: true,
-            },
-            password: {
-                type: Sequelize.STRING,
-                allowNull: false,
-            },
-            avatar_url: {
-                type: Sequelize.STRING,
-                allowNull: true,
-                comment: "Profile photo URL",
-            },
-            role: {
-                type: Sequelize.ENUM("user", "admin"),
-                allowNull: false,
-                defaultValue: "user",
-                comment: "Access role for authorization",
+                defaultValue: "living",
+                comment: "Icon name chosen on the frontend (e.g. living, bedroom, kitchen)",
             },
             created_at: {
                 allowNull: false,
@@ -43,9 +39,11 @@ module.exports = {
                 type: Sequelize.DATE,
             },
         });
+
+        await queryInterface.addIndex("rooms", ["user_id"]);
     },
 
     async down(queryInterface, Sequelize) {
-        await queryInterface.dropTable("users");
+        await queryInterface.dropTable("rooms");
     },
 };

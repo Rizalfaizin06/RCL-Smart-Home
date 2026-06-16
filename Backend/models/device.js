@@ -8,6 +8,14 @@ module.exports = (sequelize, DataTypes) => {
                 foreignKey: "user_id",
                 as: "user",
             });
+            Device.belongsTo(models.Room, {
+                foreignKey: "room_id",
+                as: "room",
+            });
+            Device.belongsTo(models.DeviceType, {
+                foreignKey: "type_id",
+                as: "type",
+            });
             Device.hasMany(models.Schedule, {
                 foreignKey: "device_id",
                 as: "schedules",
@@ -38,6 +46,18 @@ module.exports = (sequelize, DataTypes) => {
             status: {
                 type: DataTypes.BOOLEAN,
                 defaultValue: false,
+            },
+            room_id: {
+                type: DataTypes.INTEGER,
+                allowNull: true,
+            },
+            type_id: {
+                type: DataTypes.INTEGER,
+                allowNull: true,
+            },
+            icon: {
+                type: DataTypes.STRING,
+                allowNull: true,
             },
         },
         {

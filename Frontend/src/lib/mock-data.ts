@@ -28,7 +28,6 @@ export const mockDevices: Device[] = [
     status: true,
     room: "living",
     type: "speaker",
-    meta: "60%",
   },
   {
     id: 2,
@@ -38,7 +37,6 @@ export const mockDevices: Device[] = [
     status: false,
     room: "living",
     type: "thermostat",
-    meta: "25°C",
   },
   {
     id: 3,
@@ -48,7 +46,6 @@ export const mockDevices: Device[] = [
     status: true,
     room: "living",
     type: "light",
-    meta: "47%",
   },
   {
     id: 4,
@@ -58,7 +55,6 @@ export const mockDevices: Device[] = [
     status: true,
     room: "living",
     type: "router",
-    meta: "200 Mbps",
   },
   {
     id: 5,
@@ -68,7 +64,6 @@ export const mockDevices: Device[] = [
     status: false,
     room: "bedroom",
     type: "light",
-    meta: "Off",
   },
   {
     id: 6,
@@ -78,7 +73,6 @@ export const mockDevices: Device[] = [
     status: false,
     room: "bedroom",
     type: "tv",
-    meta: "Standby",
   },
   {
     id: 7,
@@ -88,7 +82,6 @@ export const mockDevices: Device[] = [
     status: false,
     room: "kitchen",
     type: "plug",
-    meta: "Idle",
   },
   {
     id: 8,
@@ -98,7 +91,6 @@ export const mockDevices: Device[] = [
     status: true,
     room: "bedroom",
     type: "ac",
-    meta: "22°C",
   },
 ];
 

@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const {
     createSchedule,
+    updateSchedule,
     deleteSchedule,
     getAllSchedules,
 } = require("../controllers/scheduleController");
@@ -11,8 +12,9 @@ const { authenticate } = require("../middlewares/auth");
 router.use(authenticate);
 
 module.exports = (broadcastStatus) => {
-    router.post("/", (req, res) => createSchedule(req, res, broadcastStatus));
-    router.delete("/:id", deleteSchedule);
     router.get("/", getAllSchedules);
+    router.post("/", (req, res) => createSchedule(req, res, broadcastStatus));
+    router.put("/:id", (req, res) => updateSchedule(req, res, broadcastStatus));
+    router.delete("/:id", deleteSchedule);
     return router;
 };

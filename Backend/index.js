@@ -13,6 +13,9 @@ const { refreshSchedules } = require("./controllers/scheduleController");
 const authRoutes = require("./routes/auth");
 const deviceRoutes = require("./routes/device");
 const scheduleRoutes = require("./routes/schedule");
+const roomRoutes = require("./routes/room");
+const deviceTypeRoutes = require("./routes/deviceType");
+const adminRoutes = require("./routes/admin");
 
 const app = express();
 const server = http.createServer(app);
@@ -60,6 +63,9 @@ function broadcastStatus(userId, deviceId, deviceName, slot, status, time) {
 app.use("/auth", authRoutes);
 app.use("/devices", deviceRoutes(broadcastStatus));
 app.use("/schedules", scheduleRoutes(broadcastStatus));
+app.use("/rooms", roomRoutes);
+app.use("/device-types", deviceTypeRoutes);
+app.use("/admin", adminRoutes);
 
 // ========== WebSocket Connection Handler ==========
 wss.on("connection", function connection(ws) {

@@ -17,7 +17,6 @@ export interface Device {
   // UI-only metadata (not yet provided by the API)
   room?: string;
   type?: DeviceType;
-  meta?: string; // e.g. "25°C", "200 Mbps", "60%"
 }
 
 export type DeviceType =

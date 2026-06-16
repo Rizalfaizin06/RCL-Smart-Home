@@ -20,4 +20,12 @@ function authenticate(req, res, next) {
     }
 }
 
-module.exports = { authenticate, JWT_SECRET };
+// Must be used AFTER authenticate. Allows only users with the "admin" role.
+function authorizeAdmin(req, res, next) {
+    if (!req.user || req.user.role !== "admin") {
+        return res.status(403).json({ message: "Admin access required." });
+    }
+    next();
+}
+
+module.exports = { authenticate, authorizeAdmin, JWT_SECRET };

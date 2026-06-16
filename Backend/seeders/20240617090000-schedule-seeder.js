@@ -4,37 +4,38 @@
 module.exports = {
     async up(queryInterface, Sequelize) {
         return queryInterface.bulkInsert(
-            "devices",
+            "schedules",
             [
+                // Smart Light (device 3) ON at 18:00
                 {
                     user_id: 1,
-                    name: "Lampu 1",
-                    slot: 1,
-                    status: false,
-                    created_at: new Date(),
-                    updated_at: new Date(),
-                },
-                {
-                    user_id: 1,
-                    name: "Lampu 2",
-                    slot: 2,
-                    status: false,
-                    created_at: new Date(),
-                    updated_at: new Date(),
-                },
-                {
-                    user_id: 1,
-                    name: "Lampu 3",
-                    slot: 3,
+                    device_id: 3,
+                    hour: 18,
+                    minute: 0,
+                    second: 0,
                     status: true,
                     created_at: new Date(),
                     updated_at: new Date(),
                 },
+                // Smart Light (device 3) OFF at 23:30
                 {
                     user_id: 1,
-                    name: "Lampu 4",
-                    slot: 4,
+                    device_id: 3,
+                    hour: 23,
+                    minute: 30,
+                    second: 0,
                     status: false,
+                    created_at: new Date(),
+                    updated_at: new Date(),
+                },
+                // Coffee Maker (device 7) ON at 06:30
+                {
+                    user_id: 1,
+                    device_id: 7,
+                    hour: 6,
+                    minute: 30,
+                    second: 0,
+                    status: true,
                     created_at: new Date(),
                     updated_at: new Date(),
                 },
@@ -44,6 +45,6 @@ module.exports = {
     },
 
     async down(queryInterface, Sequelize) {
-        return queryInterface.bulkDelete("devices", null, {});
+        return queryInterface.bulkDelete("schedules", null, {});
     },
 };

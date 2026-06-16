@@ -26,6 +26,8 @@
                     "id": { "type": "integer", "example": 1 },
                     "name": { "type": "string", "example": "John Doe" },
                     "email": { "type": "string", "format": "email", "example": "john@example.com" },
+                    "avatar_url": { "type": "string", "nullable": true, "example": "https://i.pravatar.cc/150?img=12" },
+                    "role": { "type": "string", "enum": ["user", "admin"], "example": "user" },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" }
                 }
@@ -38,6 +40,35 @@
                     "name": { "type": "string", "example": "Lamp 1" },
                     "slot": { "type": "integer", "description": "Slot number on ESP32 (unique per user)", "example": 1 },
                     "status": { "type": "boolean", "example": true },
+                    "room_id": { "type": "integer", "nullable": true, "description": "Room this device belongs to (null = unassigned)", "example": 1 },
+                    "type_id": { "type": "integer", "nullable": true, "description": "Device type id (null = uncategorized)", "example": 1 },
+                    "icon": { "type": "string", "nullable": true, "description": "Icon name chosen on the frontend (overrides type's default icon)", "example": "light" },
+                    "room": { "allOf": [{ "$ref": "#/components/schemas/Room" }], "nullable": true, "description": "Populated room object (on GET)" },
+                    "type": { "allOf": [{ "$ref": "#/components/schemas/DeviceType" }], "nullable": true, "description": "Populated device type object (on GET)" },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "DeviceType": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "integer", "example": 1 },
+                    "user_id": { "type": "integer", "description": "Owner user ID", "example": 1 },
+                    "name": { "type": "string", "example": "Light" },
+                    "icon": { "type": "string", "description": "Default icon name for this type", "example": "light" },
+                    "deviceCount": { "type": "integer", "description": "Number of devices of this type (on list endpoint)", "example": 2 },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "Room": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "integer", "example": 1 },
+                    "user_id": { "type": "integer", "description": "Owner user ID", "example": 1 },
+                    "name": { "type": "string", "example": "Living room" },
+                    "icon": { "type": "string", "description": "Icon name chosen on the frontend", "example": "living" },
+                    "deviceCount": { "type": "integer", "description": "Number of devices in this room (on list endpoint)", "example": 4 },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" }
                 }
@@ -70,14 +101,31 @@
             "ActiveSchedule": {
                 "type": "object",
                 "properties": {
+                    "id": { "type": "integer", "example": 1 },
                     "jobId": { "type": "string", "example": "1" },
+                    "user_id": { "type": "integer", "example": 1 },
+                    "device_id": { "type": "integer", "example": 1 },
                     "device": { "type": "string", "example": "Lamp 1" },
                     "slot": { "type": "integer", "description": "Slot number on ESP32", "example": 1 },
                     "status": { "type": "boolean", "example": true },
                     "second": { "type": "integer", "example": 0 },
                     "minute": { "type": "integer", "example": 30 },
                     "hour": { "type": "integer", "example": 7 },
-                    "nextRun": { "type": "string", "example": "24-06-17 07:30:00" }
+                    "nextRun": { "type": "string", "nullable": true, "example": "24-06-17 07:30:00" }
+                }
+            },
+            "Log": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "integer", "example": 1 },
+                    "user_id": { "type": "integer", "nullable": true, "example": 1 },
+                    "device_id": { "type": "integer", "nullable": true, "example": 3 },
+                    "action": { "type": "string", "example": "device.status" },
+                    "description": { "type": "string", "nullable": true, "example": "Turned \"Smart Light\" ON" },
+                    "metadata": { "type": "object", "nullable": true, "example": { "slot": 2, "status": true } },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "user": { "$ref": "#/components/schemas/User" }
                 }
             }
         }
@@ -160,8 +208,8 @@
                                 "type": "object",
                                 "required": ["email", "password"],
                                 "properties": {
-                                    "email": { "type": "string", "format": "email", "example": "john@example.com" },
-                                    "password": { "type": "string", "example": "password123" }
+                                    "email": { "type": "string", "format": "email", "example": "rizal@rcl.my.id" },
+                                    "password": { "type": "string", "example": "rizal" }
                                 }
                             }
                         }
@@ -245,6 +293,46 @@
                         }
                     }
                 }
+            },
+            "put": {
+                "tags": ["Auth"],
+                "summary": "Update current user profile",
+                "security": [{ "bearerAuth": [] }],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": { "type": "string", "example": "Mark Smith" },
+                                    "email": { "type": "string", "format": "email", "example": "mark@example.com" },
+                                    "password": { "type": "string", "minLength": 6, "description": "New password (optional)", "example": "newpassword123" },
+                                    "avatar_url": { "type": "string", "example": "https://i.pravatar.cc/150?img=12" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Profile updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": { "type": "string", "example": "Profile updated successfully." },
+                                        "data": { "$ref": "#/components/schemas/User" }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "User not found" },
+                    "409": { "description": "Email already registered" }
+                }
             }
         },
         "/devices": {
@@ -288,7 +376,10 @@
                                 "properties": {
                                     "name": { "type": "string", "example": "Lamp 3" },
                                     "slot": { "type": "integer", "description": "Slot number (unique per user, maps to ESP32 relay)", "example": 3 },
-                                    "status": { "type": "boolean", "example": false }
+                                    "status": { "type": "boolean", "example": false },
+                                    "room_id": { "type": "integer", "nullable": true, "description": "Room id (must belong to the user)", "example": 1 },
+                                    "type_id": { "type": "integer", "nullable": true, "description": "Device type id (must belong to the user)", "example": 1 },
+                                    "icon": { "type": "string", "description": "Icon name from the frontend list", "example": "light" }
                                 }
                             }
                         }
@@ -377,7 +468,10 @@
                                 "properties": {
                                     "name": { "type": "string", "example": "Lamp Updated" },
                                     "slot": { "type": "integer", "description": "New slot number", "example": 2 },
-                                    "status": { "type": "boolean", "example": true }
+                                    "status": { "type": "boolean", "example": true },
+                                    "room_id": { "type": "integer", "nullable": true, "description": "Room id (must belong to the user, null to unassign)", "example": 2 },
+                                    "type_id": { "type": "integer", "nullable": true, "description": "Device type id (must belong to the user, null to clear)", "example": 1 },
+                                    "icon": { "type": "string", "description": "Icon name from the frontend list", "example": "light" }
                                 }
                             }
                         }
@@ -495,8 +589,17 @@
         "/schedules": {
             "get": {
                 "tags": ["Schedule"],
-                "summary": "Get all active schedules",
+                "summary": "Get all schedules (optionally filtered by device)",
                 "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "name": "device_id",
+                        "in": "query",
+                        "required": false,
+                        "description": "Filter schedules by device ID",
+                        "schema": { "type": "integer", "example": 3 }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "List of active schedules",
@@ -554,11 +657,14 @@
                                             "type": "object",
                                             "properties": {
                                                 "id": { "type": "integer", "example": 1 },
+                                                "device_id": { "type": "integer", "example": 1 },
                                                 "deviceName": { "type": "string", "example": "Lamp 1" },
+                                                "slot": { "type": "integer", "example": 1 },
                                                 "status": { "type": "boolean", "example": true },
                                                 "hour": { "type": "integer", "example": 7 },
                                                 "minute": { "type": "integer", "example": 30 },
-                                                "second": { "type": "integer", "example": 0 }
+                                                "second": { "type": "integer", "example": 0 },
+                                                "nextRun": { "type": "string", "nullable": true, "example": "24-06-17 07:30:00" }
                                             }
                                         }
                                     }
@@ -576,6 +682,67 @@
             }
         },
         "/schedules/{id}": {
+            "put": {
+                "tags": ["Schedule"],
+                "summary": "Update a schedule",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "integer", "example": 1 }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "hour": { "type": "integer", "minimum": 0, "maximum": 23, "example": 8 },
+                                    "minute": { "type": "integer", "minimum": 0, "maximum": 59, "example": 15 },
+                                    "second": { "type": "integer", "minimum": 0, "maximum": 59, "example": 0 },
+                                    "status": { "type": "boolean", "example": false }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Schedule updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": { "type": "string", "example": "Schedule updated successfully." },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": { "type": "integer", "example": 1 },
+                                                "device_id": { "type": "integer", "example": 1 },
+                                                "deviceName": { "type": "string", "example": "Lamp 1" },
+                                                "slot": { "type": "integer", "example": 1 },
+                                                "status": { "type": "boolean", "example": false },
+                                                "hour": { "type": "integer", "example": 8 },
+                                                "minute": { "type": "integer", "example": 15 },
+                                                "second": { "type": "integer", "example": 0 },
+                                                "nextRun": { "type": "string", "nullable": true, "example": "24-06-17 08:15:00" }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Validation error" },
+                    "404": { "description": "Schedule not found" },
+                    "401": { "description": "Unauthorized" }
+                }
+            },
             "delete": {
                 "tags": ["Schedule"],
                 "summary": "Delete a schedule",
@@ -612,6 +779,777 @@
                     "500": {
                         "description": "Internal server error"
                     }
+                }
+            }
+        },
+        "/rooms": {
+            "get": {
+                "tags": ["Room"],
+                "summary": "Get all rooms for the current user",
+                "security": [{ "bearerAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "List of rooms with device counts",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": { "$ref": "#/components/schemas/Room" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized" }
+                }
+            },
+            "post": {
+                "tags": ["Room"],
+                "summary": "Create a new room",
+                "security": [{ "bearerAuth": [] }],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["name"],
+                                "properties": {
+                                    "name": { "type": "string", "example": "Office" },
+                                    "icon": { "type": "string", "description": "Icon name from the frontend list", "example": "office" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Room created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": { "type": "string", "example": "Room created successfully." },
+                                        "data": { "$ref": "#/components/schemas/Room" }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Validation error" },
+                    "401": { "description": "Unauthorized" }
+                }
+            }
+        },
+        "/rooms/{id}": {
+            "get": {
+                "tags": ["Room"],
+                "summary": "Get a room with its devices",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Room detail",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "allOf": [
+                                                { "$ref": "#/components/schemas/Room" },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "devices": {
+                                                            "type": "array",
+                                                            "items": { "$ref": "#/components/schemas/Device" }
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "Room not found" },
+                    "401": { "description": "Unauthorized" }
+                }
+            },
+            "put": {
+                "tags": ["Room"],
+                "summary": "Update a room",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": { "type": "string", "example": "Master Bedroom" },
+                                    "icon": { "type": "string", "example": "bedroom" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Room updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": { "type": "string", "example": "Room updated successfully." },
+                                        "data": { "$ref": "#/components/schemas/Room" }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Validation error" },
+                    "404": { "description": "Room not found" },
+                    "401": { "description": "Unauthorized" }
+                }
+            },
+            "delete": {
+                "tags": ["Room"],
+                "summary": "Delete a room (devices in it become unassigned)",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }
+                ],
+                "responses": {
+                    "200": { "description": "Room deleted successfully" },
+                    "404": { "description": "Room not found" },
+                    "401": { "description": "Unauthorized" }
+                }
+            }
+        },
+        "/device-types": {
+            "get": {
+                "tags": ["DeviceType"],
+                "summary": "Get all device types for the current user",
+                "security": [{ "bearerAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "List of device types with device counts",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": { "$ref": "#/components/schemas/DeviceType" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized" }
+                }
+            },
+            "post": {
+                "tags": ["DeviceType"],
+                "summary": "Create a new device type",
+                "security": [{ "bearerAuth": [] }],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["name"],
+                                "properties": {
+                                    "name": { "type": "string", "example": "Humidifier" },
+                                    "icon": { "type": "string", "description": "Icon name from the frontend list", "example": "generic" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Device type created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": { "type": "string", "example": "Device type created successfully." },
+                                        "data": { "$ref": "#/components/schemas/DeviceType" }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Validation error" },
+                    "401": { "description": "Unauthorized" }
+                }
+            }
+        },
+        "/device-types/{id}": {
+            "get": {
+                "tags": ["DeviceType"],
+                "summary": "Get a device type with its devices",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Device type detail",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "allOf": [
+                                                { "$ref": "#/components/schemas/DeviceType" },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "devices": {
+                                                            "type": "array",
+                                                            "items": { "$ref": "#/components/schemas/Device" }
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "Device type not found" },
+                    "401": { "description": "Unauthorized" }
+                }
+            },
+            "put": {
+                "tags": ["DeviceType"],
+                "summary": "Update a device type",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": { "type": "string", "example": "Ceiling Light" },
+                                    "icon": { "type": "string", "example": "light" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Device type updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": { "type": "string", "example": "Device type updated successfully." },
+                                        "data": { "$ref": "#/components/schemas/DeviceType" }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Validation error" },
+                    "404": { "description": "Device type not found" },
+                    "401": { "description": "Unauthorized" }
+                }
+            },
+            "delete": {
+                "tags": ["DeviceType"],
+                "summary": "Delete a device type (devices of this type become uncategorized)",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }
+                ],
+                "responses": {
+                    "200": { "description": "Device type deleted successfully" },
+                    "404": { "description": "Device type not found" },
+                    "401": { "description": "Unauthorized" }
+                }
+            }
+        },
+        "/admin/stats": {
+            "get": {
+                "tags": ["Admin"],
+                "summary": "Get dashboard statistics (admin only)",
+                "security": [{ "bearerAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "Aggregated counts across the platform",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "users": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "total": { "type": "integer", "example": 2 },
+                                                        "admins": { "type": "integer", "example": 1 },
+                                                        "regular": { "type": "integer", "example": 1 }
+                                                    }
+                                                },
+                                                "devices": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "total": { "type": "integer", "example": 8 },
+                                                        "on": { "type": "integer", "example": 4 },
+                                                        "off": { "type": "integer", "example": 4 }
+                                                    }
+                                                },
+                                                "schedules": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "total": { "type": "integer", "example": 3 }
+                                                    }
+                                                },
+                                                "logs": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "total": { "type": "integer", "example": 4 }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized" },
+                    "403": { "description": "Admin access required" }
+                }
+            }
+        },
+        "/admin/users": {
+            "get": {
+                "tags": ["Admin"],
+                "summary": "List all users (admin only)",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "description": "Filter by name or email (partial match)",
+                        "schema": { "type": "string", "example": "mark" }
+                    },
+                    {
+                        "name": "role",
+                        "in": "query",
+                        "required": false,
+                        "description": "Filter by role",
+                        "schema": { "type": "string", "enum": ["user", "admin"] }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of users with device and schedule counts",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "allOf": [
+                                                    { "$ref": "#/components/schemas/User" },
+                                                    {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "deviceCount": { "type": "integer", "example": 8 },
+                                                            "scheduleCount": { "type": "integer", "example": 3 }
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized" },
+                    "403": { "description": "Admin access required" }
+                }
+            }
+        },
+        "/admin/users/{id}": {
+            "get": {
+                "tags": ["Admin"],
+                "summary": "Get a single user with their devices and schedules (admin only)",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "integer", "example": 1 }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User detail",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "allOf": [
+                                                { "$ref": "#/components/schemas/User" },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "devices": {
+                                                            "type": "array",
+                                                            "items": { "$ref": "#/components/schemas/Device" }
+                                                        },
+                                                        "schedules": {
+                                                            "type": "array",
+                                                            "items": { "$ref": "#/components/schemas/ScheduleWithDevice" }
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "User not found" },
+                    "401": { "description": "Unauthorized" },
+                    "403": { "description": "Admin access required" }
+                }
+            },
+            "delete": {
+                "tags": ["Admin"],
+                "summary": "Delete a user and their data (admin only)",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "integer", "example": 3 }
+                    }
+                ],
+                "responses": {
+                    "200": { "description": "User deleted successfully" },
+                    "404": { "description": "User not found" },
+                    "409": { "description": "Cannot delete your own account" },
+                    "401": { "description": "Unauthorized" },
+                    "403": { "description": "Admin access required" }
+                }
+            }
+        },
+        "/admin/users/{id}/role": {
+            "put": {
+                "tags": ["Admin"],
+                "summary": "Update a user's role (admin only)",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "integer", "example": 1 }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["role"],
+                                "properties": {
+                                    "role": { "type": "string", "enum": ["user", "admin"], "example": "admin" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": { "description": "User role updated successfully" },
+                    "400": { "description": "Invalid role" },
+                    "404": { "description": "User not found" },
+                    "409": { "description": "Cannot demote the last remaining admin" },
+                    "401": { "description": "Unauthorized" },
+                    "403": { "description": "Admin access required" }
+                }
+            }
+        },
+        "/admin/devices": {
+            "get": {
+                "tags": ["Admin"],
+                "summary": "List all devices across users (admin only)",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "query",
+                        "required": false,
+                        "description": "Filter devices by owner",
+                        "schema": { "type": "integer", "example": 1 }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of devices with their owner",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "allOf": [
+                                                    { "$ref": "#/components/schemas/Device" },
+                                                    {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "user": { "$ref": "#/components/schemas/User" }
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized" },
+                    "403": { "description": "Admin access required" }
+                }
+            }
+        },
+        "/admin/rooms": {
+            "get": {
+                "tags": ["Admin"],
+                "summary": "List all rooms across users (admin only)",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "query",
+                        "required": false,
+                        "description": "Filter rooms by owner",
+                        "schema": { "type": "integer", "example": 1 }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of rooms with their owner",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "allOf": [
+                                                    { "$ref": "#/components/schemas/Room" },
+                                                    {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "user": { "$ref": "#/components/schemas/User" }
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized" },
+                    "403": { "description": "Admin access required" }
+                }
+            }
+        },
+        "/admin/device-types": {
+            "get": {
+                "tags": ["Admin"],
+                "summary": "List all device types across users (admin only)",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "query",
+                        "required": false,
+                        "description": "Filter device types by owner",
+                        "schema": { "type": "integer", "example": 1 }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of device types with their owner",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "allOf": [
+                                                    { "$ref": "#/components/schemas/DeviceType" },
+                                                    {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "user": { "$ref": "#/components/schemas/User" }
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized" },
+                    "403": { "description": "Admin access required" }
+                }
+            }
+        },
+        "/admin/schedules": {
+            "get": {
+                "tags": ["Admin"],
+                "summary": "List all schedules across users (admin only)",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "query",
+                        "required": false,
+                        "description": "Filter schedules by owner",
+                        "schema": { "type": "integer", "example": 1 }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of schedules with owner and device",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": { "$ref": "#/components/schemas/ScheduleWithDevice" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized" },
+                    "403": { "description": "Admin access required" }
+                }
+            }
+        },
+        "/admin/logs": {
+            "get": {
+                "tags": ["Admin"],
+                "summary": "List event logs with pagination (admin only)",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": { "type": "integer", "default": 1, "example": 1 }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": { "type": "integer", "default": 25, "maximum": 100, "example": 25 }
+                    },
+                    {
+                        "name": "user_id",
+                        "in": "query",
+                        "required": false,
+                        "description": "Filter logs by user",
+                        "schema": { "type": "integer", "example": 1 }
+                    },
+                    {
+                        "name": "action",
+                        "in": "query",
+                        "required": false,
+                        "description": "Filter logs by action type",
+                        "schema": { "type": "string", "example": "device.status" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of logs",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": { "$ref": "#/components/schemas/Log" }
+                                        },
+                                        "pagination": {
+                                            "type": "object",
+                                            "properties": {
+                                                "total": { "type": "integer", "example": 4 },
+                                                "page": { "type": "integer", "example": 1 },
+                                                "limit": { "type": "integer", "example": 25 },
+                                                "totalPages": { "type": "integer", "example": 1 }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized" },
+                    "403": { "description": "Admin access required" }
                 }
             }
         }

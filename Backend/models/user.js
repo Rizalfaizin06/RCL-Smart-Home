@@ -8,9 +8,21 @@ module.exports = (sequelize, DataTypes) => {
                 foreignKey: "user_id",
                 as: "devices",
             });
+            User.hasMany(models.Room, {
+                foreignKey: "user_id",
+                as: "rooms",
+            });
+            User.hasMany(models.DeviceType, {
+                foreignKey: "user_id",
+                as: "deviceTypes",
+            });
             User.hasMany(models.Schedule, {
                 foreignKey: "user_id",
                 as: "schedules",
+            });
+            User.hasMany(models.Log, {
+                foreignKey: "user_id",
+                as: "logs",
             });
         }
     }
@@ -34,6 +46,15 @@ module.exports = (sequelize, DataTypes) => {
             password: {
                 type: DataTypes.STRING,
                 allowNull: false,
+            },
+            avatar_url: {
+                type: DataTypes.STRING,
+                allowNull: true,
+            },
+            role: {
+                type: DataTypes.ENUM("user", "admin"),
+                allowNull: false,
+                defaultValue: "user",
             },
         },
         {
