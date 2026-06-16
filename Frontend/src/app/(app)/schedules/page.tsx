@@ -5,10 +5,13 @@ import { Clock, Plus, Power, PowerOff, Trash2 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { formatTime12 } from "@/lib/utils";
 import ScheduleSheet from "@/components/ScheduleSheet";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import type { Schedule } from "@/lib/types";
 
 export default function SchedulesPage() {
   const { schedules, deleteSchedule } = useStore();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [deleting, setDeleting] = useState<Schedule | null>(null);
 
   return (
     <div className="space-y-6">
@@ -67,7 +70,7 @@ export default function SchedulesPage() {
               </span>
               <button
                 type="button"
-                onClick={() => deleteSchedule(s.id)}
+                onClick={() => setDeleting(s)}
                 aria-label="Delete schedule"
                 className="flex h-9 w-9 items-center justify-center rounded-full text-muted-2 transition-colors hover:bg-red-50 hover:text-red-600"
               >
@@ -79,6 +82,17 @@ export default function SchedulesPage() {
       )}
 
       {sheetOpen && <ScheduleSheet onClose={() => setSheetOpen(false)} />}
+
+      {deleting && (
+        <ConfirmDialog
+          title="Delete schedule"
+          message={`Delete the schedule for "${deleting.device ?? "this device"}" at ${formatTime12(deleting.hour, deleting.minute)}?`}
+          confirmLabel="Delete"
+          destructive
+          onConfirm={() => deleteSchedule(deleting.id)}
+          onClose={() => setDeleting(null)}
+        />
+      )}
     </div>
   );
 }

@@ -1,22 +1,26 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import {
   Bell,
   ChevronRight,
   Cpu,
-  HelpCircle,
+  DoorOpen,
   LogOut,
   Mail,
   Moon,
-  Shield,
+  Pencil,
+  Tag,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { useAuth } from "@/lib/auth";
 import Toggle from "@/components/ui/Toggle";
 import { useState } from "react";
 
 export default function ProfilePage() {
-  const { user, devices } = useStore();
+  const { user, logout } = useAuth();
+  const { devices } = useStore();
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
 
@@ -27,24 +31,32 @@ export default function ProfilePage() {
       {/* User card */}
       <div className="flex flex-col items-center gap-3 rounded-[var(--radius-card)] border border-border bg-surface p-7 text-center">
         <Image
-          src={user.avatarUrl ?? "https://portfolio.rizalscompanylab.my.id/images/avatar/rizal-square.jpg"}
-          alt={user.name}
+          src={user?.avatar_url ?? "https://portfolio.rizalscompanylab.my.id/images/avatar/rizal-square.jpg"}
+          alt={user?.name ?? "User"}
           width={88}
           height={88}
           className="h-22 w-22 rounded-full object-cover ring-4 ring-zinc-100"
           unoptimized
         />
         <div>
-          <h2 className="text-xl font-semibold">{user.name}</h2>
+          <h2 className="text-xl font-semibold">{user?.name}</h2>
           <p className="flex items-center justify-center gap-1.5 text-sm text-muted">
             <Mail className="h-3.5 w-3.5" />
-            {user.email}
+            {user?.email}
           </p>
         </div>
         <div className="mt-1 flex items-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-medium">
           <Cpu className="h-3.5 w-3.5" />
           {devices.length} devices connected
         </div>
+
+        <Link
+          href="/profile/edit"
+          className="mt-2 flex items-center gap-1.5 rounded-2xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-zinc-100"
+        >
+          <Pencil className="h-4 w-4" />
+          Edit profile
+        </Link>
       </div>
 
       {/* Preferences */}
@@ -72,24 +84,25 @@ export default function ProfilePage() {
         </div>
       </section>
 
-      {/* Account */}
+      {/* Manage */}
       <section>
         <h3 className="mb-3 px-1 text-xs font-semibold uppercase tracking-wide text-muted-2">
-          Account
+          Manage
         </h3>
         <div className="divide-y divide-border overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
-          <LinkRow icon={<Shield className="h-5 w-5" />} label="Privacy & security" />
-          <LinkRow icon={<HelpCircle className="h-5 w-5" />} label="Help & support" />
+          <LinkRow href="/rooms" icon={<DoorOpen className="h-5 w-5" />} label="Rooms" />
+          <LinkRow href="/types" icon={<Tag className="h-5 w-5" />} label="Device types" />
         </div>
       </section>
 
-      <a
-        href="/login"
+      <button
+        type="button"
+        onClick={logout}
         className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3.5 text-[15px] font-semibold text-red-600 transition-colors hover:bg-red-50"
       >
         <LogOut className="h-5 w-5" />
         Log out
-      </a>
+      </button>
     </div>
   );
 }
@@ -114,14 +127,22 @@ function Row({
   );
 }
 
-function LinkRow({ icon, label }: { icon: React.ReactNode; label: string }) {
+function LinkRow({
+  href,
+  icon,
+  label,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+}) {
   return (
-    <button type="button" className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
+    <Link href={href} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
       <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-100 text-foreground">
         {icon}
       </span>
       <span className="flex-1 text-[15px] font-medium">{label}</span>
       <ChevronRight className="h-4 w-4 text-muted-2" />
-    </button>
+    </Link>
   );
 }

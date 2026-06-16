@@ -1,44 +1,41 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
-import type { Device, DeviceType } from "@/lib/types";
+import type { Device } from "@/lib/types";
 import { Input, Label, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import Toggle from "@/components/ui/Toggle";
-
-const deviceTypes: { value: DeviceType; label: string }[] = [
-  { value: "light", label: "Light" },
-  { value: "speaker", label: "Speaker" },
-  { value: "thermostat", label: "Thermostat" },
-  { value: "router", label: "Router" },
-  { value: "tv", label: "TV" },
-  { value: "plug", label: "Smart Plug" },
-  { value: "ac", label: "Air Conditioner" },
-  { value: "camera", label: "Camera" },
-  { value: "generic", label: "Other" },
-];
+import { deviceTypeIconOptions } from "@/components/ui/DeviceIcon";
 
 export default function DeviceForm({ device }: { device?: Device }) {
   const router = useRouter();
-  const { rooms, devices, addDevice, updateDevice } = useStore();
+  const { rooms, devices, deviceTypes, addDevice, updateDevice } = useStore();
   const isEdit = Boolean(device);
 
   const [name, setName] = useState(device?.name ?? "");
   const [slot, setSlot] = useState<string>(
     device?.slot !== undefined ? String(device.slot) : "",
   );
-  const [type, setType] = useState<DeviceType>(device?.type ?? "light");
-  const [room, setRoom] = useState(device?.room ?? rooms[0]?.id ?? "");
+  const [typeId, setTypeId] = useState<string>(
+    device?.type_id != null ? String(device.type_id) : "",
+  );
+  const [roomId, setRoomId] = useState<string>(
+    device?.room_id != null ? String(device.room_id) : "",
+  );
+  // Icon is independent of type so a device can show a specific icon.
+  const [icon, setIcon] = useState<string>(device?.icon ?? "light");
   const [status, setStatus] = useState(device?.status ?? false);
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const usedSlots = devices
     .filter((d) => d.id !== device?.id)
     .map((d) => d.slot);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -46,16 +43,34 @@ export default function DeviceForm({ device }: { device?: Device }) {
     if (slot === "") return setError("Slot number is required.");
 
     const slotNum = Number(slot);
+    if (Number.isNaN(slotNum) || slotNum < 0) {
+      return setError("Slot must be a non-negative number.");
+    }
     if (usedSlots.includes(slotNum)) {
       return setError(`Slot ${slotNum} is already in use.`);
     }
 
-    if (isEdit && device) {
-      updateDevice(device.id, { name, slot: slotNum, type, room, status });
-      router.push(`/devices/${device.id}`);
-    } else {
-      addDevice({ name, slot: slotNum, type, room, status });
-      router.push("/devices");
+    const payload = {
+      name: name.trim(),
+      slot: slotNum,
+      status,
+      room_id: roomId === "" ? null : Number(roomId),
+      type_id: typeId === "" ? null : Number(typeId),
+      icon,
+    };
+
+    setSubmitting(true);
+    try {
+      if (isEdit && device) {
+        await updateDevice(device.id, payload);
+        router.push(`/devices/${device.id}`);
+      } else {
+        const created = await addDevice(payload);
+        router.push(`/devices/${created.id}`);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save device.");
+      setSubmitting(false);
     }
   };
 
@@ -84,13 +99,13 @@ export default function DeviceForm({ device }: { device?: Device }) {
           />
         </div>
         <div>
-          <Label htmlFor="type">Type</Label>
+          <Label htmlFor="icon">Icon</Label>
           <Select
-            id="type"
-            value={type}
-            onChange={(e) => setType(e.target.value as DeviceType)}
+            id="icon"
+            value={icon}
+            onChange={(e) => setIcon(e.target.value)}
           >
-            {deviceTypes.map((t) => (
+            {deviceTypeIconOptions.map((t) => (
               <option key={t.value} value={t.value}>
                 {t.label}
               </option>
@@ -100,14 +115,53 @@ export default function DeviceForm({ device }: { device?: Device }) {
       </div>
 
       <div>
+        <Label htmlFor="type">Device type</Label>
+        <Select
+          id="type"
+          value={typeId}
+          onChange={(e) => setTypeId(e.target.value)}
+        >
+          <option value="">No type</option>
+          {deviceTypes.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </Select>
+        {deviceTypes.length === 0 && (
+          <p className="mt-1.5 text-xs text-muted">
+            No types yet.{" "}
+            <Link href="/types" className="font-semibold text-foreground">
+              Create one
+            </Link>
+            .
+          </p>
+        )}
+      </div>
+
+      <div>
         <Label htmlFor="room">Room</Label>
-        <Select id="room" value={room} onChange={(e) => setRoom(e.target.value)}>
+        <Select
+          id="room"
+          value={roomId}
+          onChange={(e) => setRoomId(e.target.value)}
+        >
+          <option value="">Unassigned</option>
           {rooms.map((r) => (
             <option key={r.id} value={r.id}>
               {r.name}
             </option>
           ))}
         </Select>
+        {rooms.length === 0 && (
+          <p className="mt-1.5 text-xs text-muted">
+            No rooms yet.{" "}
+            <Link href="/rooms" className="font-semibold text-foreground">
+              Create one
+            </Link>
+            .
+          </p>
+        )}
       </div>
 
       <div className="flex items-center justify-between rounded-2xl border border-border bg-surface px-4 py-3.5">
@@ -125,7 +179,13 @@ export default function DeviceForm({ device }: { device?: Device }) {
       )}
 
       <div className="flex flex-col gap-3 pt-2 sm:flex-row-reverse">
-        <Button type="submit">{isEdit ? "Save changes" : "Add device"}</Button>
+        <Button type="submit" disabled={submitting}>
+          {submitting
+            ? "Saving…"
+            : isEdit
+              ? "Save changes"
+              : "Add device"}
+        </Button>
         <Button
           type="button"
           variant="secondary"

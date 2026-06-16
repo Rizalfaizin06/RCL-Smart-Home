@@ -10,9 +10,8 @@ import {
   Cpu,
   type LucideIcon,
 } from "lucide-react";
-import type { DeviceType } from "@/lib/types";
 
-const map: Record<DeviceType, LucideIcon> = {
+const map: Record<string, LucideIcon> = {
   light: Lightbulb,
   speaker: Speaker,
   thermostat: Thermometer,
@@ -24,13 +23,25 @@ const map: Record<DeviceType, LucideIcon> = {
   generic: Cpu,
 };
 
+export const deviceTypeIconOptions = [
+  { value: "light", label: "Light" },
+  { value: "speaker", label: "Speaker" },
+  { value: "thermostat", label: "Thermostat" },
+  { value: "router", label: "Router" },
+  { value: "tv", label: "TV" },
+  { value: "plug", label: "Smart Plug" },
+  { value: "ac", label: "Air Conditioner" },
+  { value: "camera", label: "Camera" },
+  { value: "generic", label: "Other" },
+] as const;
+
 export default function DeviceIcon({
   type = "generic",
   className,
 }: {
-  type?: DeviceType;
+  type?: string | null;
   className?: string;
 }) {
-  const Icon = map[type] ?? Cpu;
+  const Icon = (type && map[type]) || Cpu;
   return <Icon className={className} strokeWidth={1.75} />;
 }

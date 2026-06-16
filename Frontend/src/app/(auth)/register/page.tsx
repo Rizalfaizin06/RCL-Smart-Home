@@ -6,17 +6,29 @@ import { useRouter } from "next/navigation";
 import { House } from "lucide-react";
 import { Input, Label } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/lib/auth";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { register } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: call POST /auth/register and store the JWT
-    router.push("/dashboard");
+    setError("");
+    setSubmitting(true);
+    try {
+      await register(name, email, password);
+      router.replace("/dashboard");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Registration failed.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -66,8 +78,14 @@ export default function RegisterPage() {
           />
         </div>
 
-        <Button type="submit" className="mt-2">
-          Create account
+        {error && (
+          <p className="rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-600">
+            {error}
+          </p>
+        )}
+
+        <Button type="submit" className="mt-2" disabled={submitting}>
+          {submitting ? "Creating account…" : "Create account"}
         </Button>
       </form>
 

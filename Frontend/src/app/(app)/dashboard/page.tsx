@@ -4,15 +4,17 @@ import { useState } from "react";
 import Link from "next/link";
 import { MoreHorizontal, Plus } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { useAuth } from "@/lib/auth";
 import RoomChips from "@/components/RoomChips";
 import DeviceCard from "@/components/DeviceCard";
 
 export default function DashboardPage() {
-  const { user, rooms, devices } = useStore();
-  const [room, setRoom] = useState("all");
+  const { user } = useAuth();
+  const { rooms, devices, loading, error } = useStore();
+  const [room, setRoom] = useState<number | "all">("all");
 
   const visible =
-    room === "all" ? devices : devices.filter((d) => d.room === room);
+    room === "all" ? devices : devices.filter((d) => d.room_id === room);
   const activeCount = devices.filter((d) => d.status).length;
 
   return (
@@ -20,7 +22,7 @@ export default function DashboardPage() {
       {/* Greeting */}
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">
-          Hi {user.name}
+          Hi {user?.name?.split(" ")[0] ?? "there"}
         </h1>
         <p className="mt-1 text-muted">
           {activeCount > 0
@@ -29,8 +31,16 @@ export default function DashboardPage() {
         </p>
       </div>
 
+      {error && (
+        <p className="rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-600">
+          {error}
+        </p>
+      )}
+
       {/* Rooms */}
-      <RoomChips rooms={rooms} selected={room} onSelect={setRoom} />
+      {rooms.length > 0 && (
+        <RoomChips rooms={rooms} selected={room} onSelect={setRoom} />
+      )}
 
       {/* Devices */}
       <section>
@@ -54,7 +64,16 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {visible.length === 0 ? (
+        {loading ? (
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={i}
+                className="aspect-square animate-pulse rounded-[var(--radius-card)] border border-border bg-surface"
+              />
+            ))}
+          </div>
+        ) : visible.length === 0 ? (
           <div className="rounded-[var(--radius-card)] border border-dashed border-border py-16 text-center text-sm text-muted">
             No devices in this room yet.
           </div>

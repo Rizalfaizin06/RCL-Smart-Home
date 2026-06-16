@@ -6,30 +6,45 @@ import { useStore } from "@/lib/store";
 import { Label, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import Toggle from "@/components/ui/Toggle";
-import { formatTime } from "@/lib/utils";
 
-export default function ScheduleSheet({ onClose }: { onClose: () => void }) {
+export default function ScheduleSheet({
+  onClose,
+  deviceId: initialDeviceId,
+  lockDevice = false,
+}: {
+  onClose: () => void;
+  deviceId?: number;
+  lockDevice?: boolean;
+}) {
   const { devices, addSchedule } = useStore();
-  const [deviceId, setDeviceId] = useState(devices[0]?.id ?? 0);
+  const [deviceId, setDeviceId] = useState(
+    initialDeviceId ?? devices[0]?.id ?? 0,
+  );
   const [hour, setHour] = useState(8);
   const [minute, setMinute] = useState(0);
   const [status, setStatus] = useState(true);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const device = devices.find((d) => d.id === deviceId);
-    if (!device) return;
-    addSchedule({
-      device_id: device.id,
-      device: device.name,
-      slot: device.slot,
-      hour,
-      minute,
-      second: 0,
-      status,
-      nextRun: `Today ${formatTime(hour, minute)}`,
-    });
-    onClose();
+    if (!device) return setError("Please select a device.");
+    setError("");
+    setSubmitting(true);
+    try {
+      await addSchedule({
+        device_id: device.id,
+        hour,
+        minute,
+        second: 0,
+        status,
+      });
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create schedule.");
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -58,6 +73,7 @@ export default function ScheduleSheet({ onClose }: { onClose: () => void }) {
               id="device"
               value={deviceId}
               onChange={(e) => setDeviceId(Number(e.target.value))}
+              disabled={lockDevice}
             >
               {devices.map((d) => (
                 <option key={d.id} value={d.id}>
@@ -106,7 +122,14 @@ export default function ScheduleSheet({ onClose }: { onClose: () => void }) {
             <Toggle checked={status} onChange={setStatus} ariaLabel="Action" />
           </div>
 
-          <Button type="submit">Create schedule</Button>
+          <Button type="submit" disabled={submitting}>
+            {submitting ? "Creating…" : "Create schedule"}
+          </Button>
+          {error && (
+            <p className="rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-600">
+              {error}
+            </p>
+          )}
         </form>
       </div>
     </div>

@@ -14,6 +14,7 @@ export default function DeviceCard({ device }: { device: Device }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const on = device.status;
+  const iconKey = device.icon ?? device.type?.icon ?? "generic";
 
   // Close menu on outside click
   useEffect(() => {
@@ -32,11 +33,11 @@ export default function DeviceCard({ device }: { device: Device }) {
       role="button"
       tabIndex={0}
       aria-pressed={on}
-      onClick={() => toggleDevice(device.id)}
+      onClick={() => void toggleDevice(device.id).catch(() => {})}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          toggleDevice(device.id);
+          void toggleDevice(device.id).catch(() => {});
         }
       }}
       className={cn(
@@ -53,7 +54,7 @@ export default function DeviceCard({ device }: { device: Device }) {
             on ? "bg-white/15 text-white" : "bg-zinc-100 text-foreground",
           )}
         >
-          <DeviceIcon type={device.type} className="h-5 w-5" />
+          <DeviceIcon type={iconKey} className="h-5 w-5" />
         </span>
 
         {/* Kebab menu */}

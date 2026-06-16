@@ -7,9 +7,8 @@ import {
   Briefcase,
   type LucideIcon,
 } from "lucide-react";
-import type { RoomIcon as RoomIconType } from "@/lib/types";
 
-const map: Record<RoomIconType, LucideIcon> = {
+const map: Record<string, LucideIcon> = {
   living: Sofa,
   bedroom: BedDouble,
   kitchen: CookingPot,
@@ -18,13 +17,22 @@ const map: Record<RoomIconType, LucideIcon> = {
   office: Briefcase,
 };
 
+export const roomIconOptions = [
+  { value: "living", label: "Living room" },
+  { value: "bedroom", label: "Bedroom" },
+  { value: "kitchen", label: "Kitchen" },
+  { value: "bathroom", label: "Bathroom" },
+  { value: "garage", label: "Garage" },
+  { value: "office", label: "Office" },
+] as const;
+
 export default function RoomIcon({
   icon,
   className,
 }: {
-  icon: RoomIconType;
+  icon?: string | null;
   className?: string;
 }) {
-  const Icon = map[icon] ?? Sofa;
+  const Icon = (icon && map[icon]) || Sofa;
   return <Icon className={className} strokeWidth={1.75} />;
 }

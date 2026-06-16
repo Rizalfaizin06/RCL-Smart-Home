@@ -3,20 +3,22 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Cpu, Clock, User, House, LogOut } from "lucide-react";
+import { LayoutGrid, Cpu, Clock, User, House, LogOut, DoorOpen, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useStore } from "@/lib/store";
+import { useAuth } from "@/lib/auth";
 
 const items = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
   { href: "/devices", label: "Devices", icon: Cpu },
+  { href: "/rooms", label: "Rooms", icon: DoorOpen },
+  { href: "/types", label: "Device types", icon: Tag },
   { href: "/schedules", label: "Schedules", icon: Clock },
   { href: "/profile", label: "Profile", icon: User },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user } = useStore();
+  const { user, logout } = useAuth();
 
   return (
     <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-border bg-surface px-4 py-6 md:flex">
@@ -56,26 +58,27 @@ export default function Sidebar() {
         className="flex items-center gap-3 rounded-2xl px-2 py-2 transition-colors hover:bg-zinc-100"
       >
         <Image
-          src={user.avatarUrl ?? "https://portfolio.rizalscompanylab.my.id/images/avatar/rizal-square.jpg"}
-          alt={user.name}
+          src={user?.avatar_url ?? "https://portfolio.rizalscompanylab.my.id/images/avatar/rizal-square.jpg"}
+          alt={user?.name ?? "User"}
           width={40}
           height={40}
           className="h-10 w-10 rounded-full object-cover"
           unoptimized
         />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{user.name}</p>
-          <p className="truncate text-xs text-muted">{user.email}</p>
+          <p className="truncate text-sm font-semibold">{user?.name}</p>
+          <p className="truncate text-xs text-muted">{user?.email}</p>
         </div>
       </Link>
 
-      <Link
-        href="/login"
+      <button
+        type="button"
+        onClick={logout}
         className="mt-2 flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-muted transition-colors hover:bg-zinc-100 hover:text-foreground"
       >
         <LogOut className="h-5 w-5" strokeWidth={2} />
         Log out
-      </Link>
+      </button>
     </aside>
   );
 }

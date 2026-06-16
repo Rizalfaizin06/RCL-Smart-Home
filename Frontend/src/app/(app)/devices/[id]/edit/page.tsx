@@ -12,8 +12,16 @@ export default function EditDevicePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const { devices } = useStore();
+  const { devices, loading } = useStore();
   const device = devices.find((d) => d.id === Number(id));
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-foreground" />
+      </div>
+    );
+  }
 
   if (!device) return notFound();
 

@@ -1,8 +1,7 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import { notFound, useRouter } from "next/navigation";
-import Link from "next/link";
 import {
   Clock,
   Pencil,
@@ -15,6 +14,8 @@ import { useStore } from "@/lib/store";
 import PageHeader from "@/components/PageHeader";
 import Toggle from "@/components/ui/Toggle";
 import DeviceIcon from "@/components/ui/DeviceIcon";
+import ScheduleSheet from "@/components/ScheduleSheet";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { formatTime12 } from "@/lib/utils";
 
 export default function DeviceDetailPage({
@@ -24,21 +25,40 @@ export default function DeviceDetailPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
-  const { devices, schedules, rooms, toggleDevice, deleteDevice } = useStore();
+  const { devices, schedules, toggleDevice, deleteDevice, loading } = useStore();
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleted, setDeleted] = useState(false);
   const device = devices.find((d) => d.id === Number(id));
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-foreground" />
+      </div>
+    );
+  }
+
+  // While the delete is navigating away, the device is gone from the store.
+  // Show a spinner instead of triggering notFound().
+  if (deleted) {
+    return (
+      <div className="flex justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-foreground" />
+      </div>
+    );
+  }
 
   if (!device) return notFound();
   const on = device.status;
 
   const deviceSchedules = schedules.filter((s) => s.device_id === device.id);
-  const roomName =
-    rooms.find((r) => r.id === device.room)?.name ?? "Unassigned";
+  const roomName = device.room?.name ?? "Unassigned";
 
-  const handleDelete = () => {
-    if (confirm(`Delete "${device.name}"? This cannot be undone.`)) {
-      deleteDevice(device.id);
-      router.push("/devices");
-    }
+  const handleDelete = async () => {
+    await deleteDevice(device.id);
+    setDeleted(true);
+    router.push("/devices");
   };
 
   return (
@@ -72,7 +92,10 @@ export default function DeviceDetailPage({
               on ? "bg-white/15 text-white" : "bg-zinc-100 text-foreground"
             }`}
           >
-            <DeviceIcon type={device.type} className="h-8 w-8" />
+            <DeviceIcon
+              type={device.icon ?? device.type?.icon ?? "generic"}
+              className="h-8 w-8"
+            />
           </span>
           <div>
             <p className="text-sm opacity-70">Status</p>
@@ -81,7 +104,7 @@ export default function DeviceDetailPage({
         </div>
         <Toggle
           checked={on}
-          onChange={() => toggleDevice(device.id)}
+          onChange={() => void toggleDevice(device.id).catch(() => {})}
           size="lg"
           ariaLabel={`Toggle ${device.name}`}
         />
@@ -91,13 +114,14 @@ export default function DeviceDetailPage({
       <section>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Schedule</h2>
-          <Link
-            href="/schedules"
+          <button
+            type="button"
+            onClick={() => setSheetOpen(true)}
             className="flex h-9 items-center gap-1.5 rounded-full bg-foreground px-3 text-xs font-semibold text-accent-foreground transition-transform hover:scale-[1.03]"
           >
             <Plus className="h-3.5 w-3.5" />
             Add
-          </Link>
+          </button>
         </div>
 
         {deviceSchedules.length === 0 ? (
@@ -147,12 +171,31 @@ export default function DeviceDetailPage({
       {/* Danger zone */}
       <button
         type="button"
-        onClick={handleDelete}
+        onClick={() => setConfirmOpen(true)}
         className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3.5 text-[15px] font-semibold text-red-600 transition-colors hover:bg-red-50"
       >
         <Trash2 className="h-5 w-5" />
         Delete device
       </button>
+
+      {sheetOpen && (
+        <ScheduleSheet
+          deviceId={device.id}
+          lockDevice
+          onClose={() => setSheetOpen(false)}
+        />
+      )}
+
+      {confirmOpen && (
+        <ConfirmDialog
+          title="Delete device"
+          message={`Delete "${device.name}"? This cannot be undone.`}
+          confirmLabel="Delete"
+          destructive
+          onConfirm={handleDelete}
+          onClose={() => setConfirmOpen(false)}
+        />
+      )}
     </div>
   );
 }
