@@ -26,17 +26,25 @@ module.exports = (sequelize, DataTypes) => {
                 type: DataTypes.INTEGER,
                 allowNull: false,
             },
-            name: DataTypes.STRING,
+            name: {
+                type: DataTypes.STRING,
+                allowNull: false,
+            },
             slot: {
                 type: DataTypes.INTEGER,
                 allowNull: false,
                 comment: "Slot number on ESP32 (e.g. relay pin index)",
             },
-            status: DataTypes.BOOLEAN,
+            status: {
+                type: DataTypes.BOOLEAN,
+                defaultValue: false,
+            },
         },
         {
             sequelize,
             modelName: "Device",
+            tableName: "devices",
+            underscored: true,
         }
     );
     return Device;

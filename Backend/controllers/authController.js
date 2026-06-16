@@ -79,7 +79,7 @@ const login = async (req, res) => {
 const getProfile = async (req, res) => {
     try {
         const user = await User.findByPk(req.user.id, {
-            attributes: ["id", "name", "email", "createdAt", "updatedAt"],
+            attributes: ["id", "name", "email", "created_at", "updated_at"],
         });
 
         if (!user) {

@@ -26,15 +26,32 @@ module.exports = (sequelize, DataTypes) => {
                 type: DataTypes.INTEGER,
                 allowNull: false,
             },
-            device_id: DataTypes.INTEGER,
-            hour: DataTypes.INTEGER,
-            minute: DataTypes.INTEGER,
-            second: DataTypes.INTEGER,
-            status: DataTypes.BOOLEAN,
+            device_id: {
+                type: DataTypes.INTEGER,
+                allowNull: false,
+            },
+            hour: {
+                type: DataTypes.INTEGER,
+                allowNull: false,
+            },
+            minute: {
+                type: DataTypes.INTEGER,
+                allowNull: false,
+            },
+            second: {
+                type: DataTypes.INTEGER,
+                allowNull: false,
+            },
+            status: {
+                type: DataTypes.BOOLEAN,
+                allowNull: false,
+            },
         },
         {
             sequelize,
             modelName: "Schedule",
+            tableName: "schedules",
+            underscored: true,
         }
     );
     return Schedule;
