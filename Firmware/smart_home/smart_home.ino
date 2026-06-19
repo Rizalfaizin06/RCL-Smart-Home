@@ -1,5 +1,6 @@
 #include <WiFi.h>
-#include <ArduinoWebsockets.h> // Version - 0.5.4
+// #include <ArduinoWebsockets.h> // Version - 0.5.4 - DIGANTI WebSocketsClient
+#include <WebSocketsClient.h> // Version - 
 #include <ArduinoJson.h> // Version - 7.4.3
 
 // ========== CONFIGURATION ==========
@@ -8,8 +9,9 @@ const char* ssid = "Redmi Note 4x";
 const char* password = "12344321";
 
 // WebSocket Server
-const char* ws_host = "10.10.10.102";
-const uint16_t ws_port = 8080;
+const char* ws_host = "smarthome-api.rizalscompanylab.my.id";
+const uint16_t ws_port = 443;
+const char* ws_path = "/";
 
 // User ID (sesuaikan dengan user yang terdaftar di server)
 const int USER_ID = 1;
@@ -22,11 +24,12 @@ const int slots[SLOT_COUNT] = {1, 2, 3, 4};
 const int pins[SLOT_COUNT] = {12, 14, 4, 5};
 
 // ========== GLOBALS ==========
-using namespace websockets;
-WebsocketsClient client;
+WebSocketsClient webSocket;
 
 unsigned long lastReconnectAttempt = 0;
-const unsigned long RECONNECT_INTERVAL = 5000; 
+const unsigned long RECONNECT_INTERVAL = 5000;
+bool isConnected = false;
+
 
 // ========== FUNCTIONS ==========
 
@@ -90,31 +93,66 @@ void handleError(JsonDocument& doc) {
     Serial.println(msg);
 }
 
-// Callback saat menerima pesan WebSocket
-void onMessageCallback(WebsocketsMessage message) {
-    Serial.print("[WS] Raw: ");
-    Serial.println(message.data());
-
+void sendRegister() {
     JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, message.data());
+    doc["type"] = "register";
+    doc["userId"] = USER_ID;
 
-    if (error) {
-        Serial.print("[WS] JSON parse error: ");
-        Serial.println(error.c_str());
-        return;
-    }
+    String payload;
+    serializeJson(doc, payload);
+    webSocket.sendTXT(payload);
 
-    const char* type = doc["type"];
+    Serial.print("[WS] Sent register: ");
+    Serial.println(payload);
+}
+// Event handler — ini menggantikan onMessageCallback + connect logic
+void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
+    switch (type) {
+        case WStype_DISCONNECTED:
+            Serial.println("[WS] Disconnected");
+            isConnected = false;
+            break;
 
-    if (strcmp(type, "sync") == 0) {
-        handleSync(doc);
-    } else if (strcmp(type, "command") == 0) {
-        handleCommand(doc);
-    } else if (strcmp(type, "error") == 0) {
-        handleError(doc);
-    } else {
-        Serial.print("[WS] Unknown type: ");
-        Serial.println(type);
+        case WStype_CONNECTED:
+            Serial.println("[WS] Connected!");
+            isConnected = true;
+            sendRegister();
+            break;
+
+        case WStype_TEXT: {
+            Serial.print("[WS] Raw: ");
+            Serial.println((char*)payload);
+
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, payload, length);
+
+            if (error) {
+                Serial.print("[WS] JSON parse error: ");
+                Serial.println(error.c_str());
+                return;
+            }
+
+            const char* msgType = doc["type"];
+
+            if (strcmp(msgType, "sync") == 0) {
+                handleSync(doc);
+            } else if (strcmp(msgType, "command") == 0) {
+                handleCommand(doc);
+            } else if (strcmp(msgType, "error") == 0) {
+                handleError(doc);
+            } else {
+                Serial.print("[WS] Unknown type: ");
+                Serial.println(msgType);
+            }
+            break;
+        }
+
+        case WStype_ERROR:
+            Serial.println("[WS] Error event");
+            break;
+
+        default:
+            break;
     }
 }
 
@@ -140,30 +178,6 @@ void connectToWifi() {
     }
 }
 
-// Konek ke WebSocket server dan kirim register
-void connectToServer() {
-    Serial.println("[WS] Connecting to server...");
-
-    bool connected = client.connect(ws_host, ws_port, "/");
-
-    if (connected) {
-        Serial.println("[WS] Connected!");
-
-        // Kirim register message
-        JsonDocument doc;
-        doc["type"] = "register";
-        doc["userId"] = USER_ID;
-
-        String payload;
-        serializeJson(doc, payload);
-        client.send(payload);
-
-        Serial.print("[WS] Sent register: ");
-        Serial.println(payload);
-    } else {
-        Serial.println("[WS] Connection failed.");
-    }
-}
 
 // ========== SETUP ==========
 void setup() {
@@ -187,33 +201,25 @@ void setup() {
     // Connect WiFi
     connectToWifi();
 
-    // Setup WebSocket callback
-    client.onMessage(onMessageCallback);
-
-    // Connect to server
-    if (WiFi.status() == WL_CONNECTED) {
-        connectToServer();
+     if (WiFi.status() == WL_CONNECTED) {
+        // beginSSL untuk wss:// — host, port, path
+        webSocket.beginSSL(ws_host, ws_port, ws_path);
+        webSocket.onEvent(webSocketEvent);
+        webSocket.setReconnectInterval(RECONNECT_INTERVAL);
     }
 }
 
 // ========== LOOP ==========
 void loop() {
     if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("[WiFi] Disconnected. Reconnecting...");
-        connectToWifi();
-        delay(1000);
-        return;
-    }
-
-    if (client.available()) {
-        client.poll();
-    } else {
-        // Reconnect dengan interval agar tidak spam
         unsigned long now = millis();
         if (now - lastReconnectAttempt >= RECONNECT_INTERVAL) {
             lastReconnectAttempt = now;
-            Serial.println("[WS] Disconnected. Reconnecting...");
-            connectToServer();
+            Serial.println("[WiFi] Disconnected. Reconnecting...");
+            connectToWifi();
         }
+        return;
     }
+
+    webSocket.loop();
 }
